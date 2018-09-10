@@ -2,9 +2,10 @@
 <link rel="import" href="../fs-styles/fs-styles.html">
 <link rel="import" href="../birch-typeahead/birch-typeahead.html">
 <link rel="import" href="../wc-i18n/wc-i18n.html">
-<link rel="import" href="../paper-menu/paper-menu.html">
+<link rel="import" href="../paper-listbox/paper-listbox.html">
 <link rel="import" href="../oak-i18n-behavior/oak-i18n-behavior.html">
-<!-- object-assign-shim is only to support IE11, but it's tiny anyhow -->
+<link rel="import" href="../fs-metrics/fs-metrics.html">
+<!-- object-assign-shim is only to support IE11 and Android webview, but it's tiny anyhow -->
 <script src="../object-assign-shim/index.js"></script>
 
 <!--
@@ -27,82 +28,305 @@ Example:
 
     <birch-standards-picker standard-type="place"></birch-standards-picker>
 
+Styling:
+
+The following custom properties and mixins are available for styling:
+
+| Custom Property                        | Description                | Default  |
+|:---------------------------------------|:---------------------------|:---------|
+| `--birch-standards-picker-paper-item`  | Mixin applied to the item  | `{}`     |
+
 @demo demo/index.html
 
 -->
 
 <dom-module id="birch-standards-picker">
-  <style include='fs-styles'></style>
-  <link rel="import" type="css" href="birch-standards-picker.css">
   <template>
+    <style include='fs-styles'>
+      :host {
+        display: block;
+        font-family: Verdana;
+        color: #666662;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .standard-container {
+        position: relative;
+      }
+      .standard-container p {
+        margin: 0;
+        padding-top: 10px;
+        min-height: 40px;
+      }
+      .status-container {
+        height: 14px;
+      }
+      #optionsMenu {
+        position: absolute;
+        z-index: 100000;
+        padding: 0;
+        width: 100%;
+        max-height: 200px;
+        overflow-y: scroll;
+        overflow-x: hidden;
+        cursor: pointer;
+        box-shadow: 0 5px 10px #bab7b1;
+        -webkit-overflow-scrolling: touch;
+        border: 1px solid #bab7b1;
+        border-radius: 4px;
+      }
+      #optionsMenuWrapper {
+        position: relative;
+        margin-top: 12px;
+      }
+      #optionsMenuWrapper:after, #optionsMenuWrapper:before {
+        bottom: -1px;
+        left: 30px;
+        border: solid transparent;
+        content: " ";
+        height: 0;
+        width: 0;
+        position: absolute;
+        pointer-events: none;
+      }
+      #optionsMenuWrapper:after {
+        border-color: rgba(255, 255, 255, 0);
+        border-bottom-color: #ffffff;
+        border-width: 12px;
+        margin-left: -12px;
+        z-index: 100001;
+      }
+      #optionsMenuWrapper:before {
+        border-color: rgba(186, 183, 177, 0);
+        border-bottom-color: #bab7b1;
+        border-width: 13px;
+        margin-left: -13px;
+      }
+      .label-text {
+        padding-left: 2px;
+        width: 85%;
+        overflow: hidden;
+        display: inline-block;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+      }
+      .standardIcon {
+        margin: 0 6px;
+      }
+      .carat {
+        vertical-align: top;
+        position: absolute;
+        right: 10px;
+      }
+      .loading {
+        height: 20px;
+        width: 20px;
+        background-size: 20px 20px;
+        background-color: #ffffff;
+        background-image: url(data:image/gif;base64,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);
+        background-position:right center;
+        background-repeat: no-repeat;
+        vertical-align: top;
+        position: absolute;
+        right: 0px;
+      }
+      .standard-button {
+        display: block;
+        cursor: pointer;
+        text-align: left;
+        position: relative;
+        width: 100%;
+        border: 1px solid #bab7b1;
+        vertical-align: middle;
+        white-space: nowrap;
+        background: 0 0;
+        font-size: 14px;
+        padding: 5px;
+        border-radius: 5px;
+        overflow: hidden;
+      }
+      #button .standard-indicator {
+        padding: 0 2.857rem 0 1.75rem;
+      }
+      #button .standard-indicator:before {
+        height: 16.5px;
+        height: 1.15rem;
+      }
+      .standard-indicator {
+        padding: 0.25rem 2.857rem 0 1.75rem;
+        position: relative;
+      }
+      .standard-indicator:before {
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 16px;
+        content: '';
+        height: 18.5px;
+        height: 1.45rem;
+        left: 0;
+        position: absolute;
+        width: 22.75px;
+        width: 1.625rem;
+      }
+      .standard-indicator.standard small {
+        color: #44650f;
+      }
+      .standard-indicator.non-standard small {
+        color: #79520f;
+      }
+      .standard-indicator.standard:before {
+        background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20version%3D%221.2%22%20baseProfile%3D%22tiny%22%20x%3D%220%22%20y%3D%220%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20xml%3Aspace%3D%22preserve%22%3E%3Cpath%20fill%3D%22%2344650F%22%20d%3D%22M7%2016.6c-0.2%200-0.3-0.1-0.5-0.2l-5.9-5.9c-0.1-0.1-0.2-0.3-0.2-0.5%200-0.2%200.1-0.3%200.2-0.5l2-1.9c0.1-0.1%200.3-0.2%200.5-0.2%200.2%200%200.3%200.1%200.5%200.2l2.9%202.9c0.2%200.2%200.4%200.2%200.6%200.2%200.2%200%200.4-0.1%200.6-0.2l7.9-7.9c0.1-0.1%200.3-0.2%200.5-0.2s0.3%200.1%200.5%200.2l1.9%201.9C18.5%204.7%2018.6%204.8%2018.6%205s-0.1%200.3-0.2%200.5L7.5%2016.4C7.3%2016.5%207.2%2016.6%207%2016.6z%22%2F%3E%3Crect%20fill%3D%22none%22%20width%3D%2220%22%20height%3D%2220%22%2F%3E%3C%2Fsvg%3E") !important;
+      }
+      .standard-indicator.non-standard:before {
+        background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20version%3D%221.2%22%20baseProfile%3D%22tiny%22%20x%3D%220%22%20y%3D%220%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20xml%3Aspace%3D%22preserve%22%3E%3Crect%20fill%3D%22none%22%20width%3D%2220%22%20height%3D%2220%22%2F%3E%3Cpath%20fill%3D%22%2379520F%22%20d%3D%22M10%208.7l3.2%205.4H6.8L10%208.7M10%202.2c-0.4%200-0.7%200.2-1%200.7L1.2%2016.2C0.6%2017.1%201.1%2017.9%202.2%2017.9h15.7c1.1%200%201.5-0.8%201-1.7L11%202.9C10.7%202.4%2010.4%202.2%2010%202.2L10%202.2z%22%2F%3E%3C%2Fsvg%3E") !important
+      }
+      .small {
+        font-size: 12px;
+      }
+      #Layer_1 {
+        vertical-align: middle;
+      }
+      birch-typeahead {
+        --birch-typeahead-input: {
+          background-color: #fff;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          box-shadow: inset 0 3px 0 rgba(0,0,0,.05);
+          box-sizing: border-box;
+          color: #333331;
+          padding: 6px 10px 6px 25px;
+        };
+        --birch-typeahead-input-disabled: {
+          background-color: #eee;
+        };
+        --birch-typeahead-paper-item: {
+          @apply --birch-standards-picker-paper-item;
+        };
+        --paper-item-body-two-line-min-height: 50px;
+      }
+      paper-item, paper-icon-item, paper-item-body {
+        --paper-item: {
+          font-family: verdana;
+          font-size: 14px;
+        };
+        --paper-item-selected: {
+          font-weight: 100 !important;
+          background-color: #ecebea !important;
+        };
+        --paper-item-icon-width: 25px;
+      }
+      paper-menu {
+        --paper-menu: {
+          font-family: verdana
+        };
+      }
+      paper-item > *, paper-icon-item > *, paper-item-body > * {
+        white-space: normal !important;
+        font-size: 14px !important;
+      }
+    </style>
 
-    <small>[[inputLabel]]</small>
     <birch-typeahead
+      focusable-component
       id='typeahead'
+      input-label="[[inputLabel]]"
+      aria-input-label='[[inputLabel]]'
       highlight-first-item
       follow-tabindex-after-tab-select
       loading="[[loading]]"
+      disabled="[[disabled]]"
       debounce-input-duration="200"
+      is-dirty="{{isDirty}}"
       value="{{searchTerm::birch-typeahead:input}}"
-      placeholder="[[_getPlaceholder(standardType, i18n)]]"
+      placeholder="[[_getPlaceholder(standardType, i18n, disabled)]]"
       options="[[_typeaheadOptions]]"
       on-birch-typeahead:input='_handleInput'
       on-birch-typeahead:cancel='_handleCancel'
       on-birch-typeahead:blur='_handleCancel'
       on-birch-typeahead:selected='_handleSelect'>
-      <template>
 
+      <template slot="item-template">
         <template is="dom-if" if="[[item.icon]]" restamp>
-          <paper-icon-item>
-            <iron-icon item-icon>
-              <template is="dom-if" if="[[isDate]]">
-                <svg id="Layer_1" data-name="Layer 1" width="14" height="16" viewBox="0 0 14 16"><path d="M1,15.9A.94.94,0,0,1,.1,15V3.6A1.5,1.5,0,0,1,1.6,2.1h.3V3A1.1,1.1,0,0,0,3,4.1h.1V.1H4a.9.9,0,0,1,.9.9V2.1h4V3A1.1,1.1,0,0,0,10,4.1h.1V.1H11a.9.9,0,0,1,.9.9V2.1h.5a1.5,1.5,0,0,1,1.5,1.5V15a.94.94,0,0,1-.94.94Zm.86-1.8H12.1V5.9H1.9Z" style="fill:#333331"/><rect width="14" height="16" style="fill:none"/><path d="M3.17,12.24l.59-.76a2.12,2.12,0,0,0,1.47.61c.65,0,1-.28,1-.68s-.33-.62-1.07-.62l-.66,0v-1h.66c.59,0,1-.18,1-.57s-.43-.63-1-.63a1.92,1.92,0,0,0-1.35.55l-.57-.71a2.63,2.63,0,0,1,2-.85c1.25,0,2,.56,2,1.45a1.31,1.31,0,0,1-1.17,1.22,1.34,1.34,0,0,1,1.25,1.28c0,.92-.82,1.57-2.1,1.57A2.67,2.67,0,0,1,3.17,12.24Z" style="fill:#333331"/><path d="M9.33,13V9.13l-.89.9-.65-.68L9.47,7.67h1V13Z" style="fill:#333331"/></svg>
-              </template>
-              <template is="dom-if" if="[[isPlace]]">
-                <svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" width="11" height="16" viewBox="0 0 11 16"><path d="M5.5,15.79a.39.39,0,0,1-.37-.24.36.36,0,0,1,0-.13A7.49,7.49,0,0,0,2.9,10.31c-.37-.44-.79-.94-1.27-1.57L1.4,8.42a5,5,0,0,1-1-3.08,5.13,5.13,0,1,1,10.27,0,5.08,5.08,0,0,1-1,3.08l-.24.32h0c-.48.63-.9,1.13-1.27,1.57a7.46,7.46,0,0,0-2.21,5.08A.39.39,0,0,1,5.5,15.79ZM5.5,3a2,2,0,1,0,2,2A2,2,0,0,0,5.5,3Z" style="fill:#333331"/><rect width="11" height="16" style="fill:none"/></svg>
-              </template>
-            </iron-icon>
-            <paper-item-body two-line>
-              <div class="standard-label" style="white-space:normal;color:#333331;font-weight:bold;">[[item.label]]</div>
-              <div class="standard-info" style="white-space:normal;color:#666662;font-size:12px !important;">[[item.type]][[item.yearRange]]</div>
-            </paper-item-body>
+          <paper-icon-item style="display: flex; align-items: center;" title$="[[item.label]]">
+            <template is="dom-if" if="[[isDate]]">
+              <svg slot="item-icon" item-icon id="Layer_1" data-name="Layer 1" width="14" height="16" viewBox="0 0 14 16"><path d="M1,15.9A.94.94,0,0,1,.1,15V3.6A1.5,1.5,0,0,1,1.6,2.1h.3V3A1.1,1.1,0,0,0,3,4.1h.1V.1H4a.9.9,0,0,1,.9.9V2.1h4V3A1.1,1.1,0,0,0,10,4.1h.1V.1H11a.9.9,0,0,1,.9.9V2.1h.5a1.5,1.5,0,0,1,1.5,1.5V15a.94.94,0,0,1-.94.94Zm.86-1.8H12.1V5.9H1.9Z" style="fill:#333331"/><rect width="14" height="16" style="fill:none"/><path d="M3.17,12.24l.59-.76a2.12,2.12,0,0,0,1.47.61c.65,0,1-.28,1-.68s-.33-.62-1.07-.62l-.66,0v-1h.66c.59,0,1-.18,1-.57s-.43-.63-1-.63a1.92,1.92,0,0,0-1.35.55l-.57-.71a2.63,2.63,0,0,1,2-.85c1.25,0,2,.56,2,1.45a1.31,1.31,0,0,1-1.17,1.22,1.34,1.34,0,0,1,1.25,1.28c0,.92-.82,1.57-2.1,1.57A2.67,2.67,0,0,1,3.17,12.24Z" style="fill:#333331"/><path d="M9.33,13V9.13l-.89.9-.65-.68L9.47,7.67h1V13Z" style="fill:#333331"/></svg>
+              <paper-item-body style="display: flex; flex-direction: column; justify-content: center; flex: 1; flex-basis: .000000001px;">
+                <div class="standard-label" style="white-space:normal;color:#333331;font-weight:bold;">[[item.label]]</div>
+              </paper-item-body>
+            </template>
+            <template is="dom-if" if="[[isPlace]]">
+              <svg slot="item-icon" id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" width="11" height="16" viewBox="0 0 11 16"><path d="M5.5,15.79a.39.39,0,0,1-.37-.24.36.36,0,0,1,0-.13A7.49,7.49,0,0,0,2.9,10.31c-.37-.44-.79-.94-1.27-1.57L1.4,8.42a5,5,0,0,1-1-3.08,5.13,5.13,0,1,1,10.27,0,5.08,5.08,0,0,1-1,3.08l-.24.32h0c-.48.63-.9,1.13-1.27,1.57a7.46,7.46,0,0,0-2.21,5.08A.39.39,0,0,1,5.5,15.79ZM5.5,3a2,2,0,1,0,2,2A2,2,0,0,0,5.5,3Z" style="fill:#333331"/><rect width="11" height="16" style="fill:none"/></svg>
+              <paper-item-body two-line style="display: flex; flex-direction: column; justify-content: center; flex: 1; flex-basis: .000000001px;">
+                <div class="standard-label" style="white-space:normal;color:#333331;font-weight:bold;">[[item.label]]</div>
+                <div class="standard-info" style="white-space:normal;color:#666662;font-size:12px !important;">[[item.type]][[item.yearRange]]</div>
+              </paper-item-body>
+            </template>
           </paper-icon-item>
         </template>
-
         <template is="dom-if" if="[[!item.icon]]" restamp>
-          <paper-icon-item>
-            <iron-icon item-icon></iron-icon>
-            <paper-item-body two-line>
+          <paper-icon-item title$="[[item.label]]">
+            <paper-item-body style="display: flex; flex-direction: column; justify-content: center; flex: 1; flex-basis: .000000001px;">
               <div class="standard-label" style="white-space:normal;color:#333331;">[[item.label]]</div>
-              <div class="standard-info" style="white-space:normal;color:#666662;font-size:12px !important;">[[item.type]][[item.yearRange]]</div>
             </paper-item-body>
           </paper-icon-item>
         </template>
-
       </template>
+
+      <div slot="input-icon">
+        <template is="dom-if" if="[[_showStandardInputIcon(isDate, standardSelected)]]">
+          <svg width="14" height="16" viewBox="0 0 14 16"><path d="M1,15.9A.94.94,0,0,1,.1,15V3.6A1.5,1.5,0,0,1,1.6,2.1h.3V3A1.1,1.1,0,0,0,3,4.1h.1V.1H4a.9.9,0,0,1,.9.9V2.1h4V3A1.1,1.1,0,0,0,10,4.1h.1V.1H11a.9.9,0,0,1,.9.9V2.1h.5a1.5,1.5,0,0,1,1.5,1.5V15a.94.94,0,0,1-.94.94Zm.86-1.8H12.1V5.9H1.9Z" style="fill:#333331"/><rect width="14" height="16" style="fill:none"/><path d="M3.17,12.24l.59-.76a2.12,2.12,0,0,0,1.47.61c.65,0,1-.28,1-.68s-.33-.62-1.07-.62l-.66,0v-1h.66c.59,0,1-.18,1-.57s-.43-.63-1-.63a1.92,1.92,0,0,0-1.35.55l-.57-.71a2.63,2.63,0,0,1,2-.85c1.25,0,2,.56,2,1.45a1.31,1.31,0,0,1-1.17,1.22,1.34,1.34,0,0,1,1.25,1.28c0,.92-.82,1.57-2.1,1.57A2.67,2.67,0,0,1,3.17,12.24Z" style="fill:#333331"/><path d="M9.33,13V9.13l-.89.9-.65-.68L9.47,7.67h1V13Z" style="fill:#333331"/></svg>
+        </template>
+        <template is="dom-if" if="[[_showStandardInputIcon(isPlace, standardSelected)]]">
+          <svg width="11" height="16" viewBox="0 0 11 16"><path d="M5.5,15.79a.39.39,0,0,1-.37-.24.36.36,0,0,1,0-.13A7.49,7.49,0,0,0,2.9,10.31c-.37-.44-.79-.94-1.27-1.57L1.4,8.42a5,5,0,0,1-1-3.08,5.13,5.13,0,1,1,10.27,0,5.08,5.08,0,0,1-1,3.08l-.24.32h0c-.48.63-.9,1.13-1.27,1.57a7.46,7.46,0,0,0-2.21,5.08A.39.39,0,0,1,5.5,15.79ZM5.5,3a2,2,0,1,0,2,2A2,2,0,0,0,5.5,3Z" style="fill:#333331"/><rect width="11" height="16" style="fill:none"/></svg>
+        </template>
+      </div>
     </birch-typeahead>
 
-    <div class="standard-container" hidden$='[[_hideStandardsContainer(data, standardType, i18n)]]'>
+    <div aria-live="polite" class="status-container">
+      <template is="dom-if" if="[[_showStandardSelectedIndicator(data, searchTerm)]]">
+        <div class="standard-indicator standard small" data-test-standard-indicator>
+          <small data-test="StandardIndicator">[[_getStandardizedIndicatorText(standardType, i18n)]]</small>
+        </div>
+      </template>
+
+      <template is="dom-if" if="[[_showNonStandardSelectedIndicator]]">
+        <div class="standard-indicator non-standard small" data-test-nonStandard-indicator>
+          <small data-test="NonstandardIndicator">[[_getNonStandardizedIndicatorText(standardType, i18n)]]</small>
+        </div>
+      </template>
+
+      <template is="dom-if" if="[[_isNonStandardSelected(data, i18n, 'true')]]">
+        <div class="standard-indicator non-standard small" data-test-nonStandard-indicator>
+          <small data-test="NonstandardIndicator2">[[_getStandardLabel(data)]]</small>
+        </div>
+      </template>
+    </div>
+
+    <div class="standard-container" hidden$='[[_hideStandardsContainer(data, standardType, i18n, hideStandardsMenu)]]'>
       <p>
         <small>[[standardsDropdownLabel]]</small>
         <button
           id="button"
+          type="button"
           class="standard-button"
+          data-test="PickStandardBtn"
           on-focusout="_handleFocusout"
           on-tap="_openStandardSelector"
-          on-keydown="_handleKeydown">
+          on-keydown="_handleKeydown"
+          title$="[[_getStandardLabel(data)]]">
 
-          <iron-icon class="standardIcon" hidden$="[[_hideStandardIcon(data.label, i18n)]]">
+          <span class="standardIcon" hidden$="[[_hideStandardIcon(data.label, i18n)]]">
             <template is="dom-if" if="[[isDate]]">
               <svg id="Layer_1" data-name="Layer 1" width="14" height="16" viewBox="0 0 14 16"><path d="M1,15.9A.94.94,0,0,1,.1,15V3.6A1.5,1.5,0,0,1,1.6,2.1h.3V3A1.1,1.1,0,0,0,3,4.1h.1V.1H4a.9.9,0,0,1,.9.9V2.1h4V3A1.1,1.1,0,0,0,10,4.1h.1V.1H11a.9.9,0,0,1,.9.9V2.1h.5a1.5,1.5,0,0,1,1.5,1.5V15a.94.94,0,0,1-.94.94Zm.86-1.8H12.1V5.9H1.9Z" style="fill:#333331"/><rect width="14" height="16" style="fill:none"/><path d="M3.17,12.24l.59-.76a2.12,2.12,0,0,0,1.47.61c.65,0,1-.28,1-.68s-.33-.62-1.07-.62l-.66,0v-1h.66c.59,0,1-.18,1-.57s-.43-.63-1-.63a1.92,1.92,0,0,0-1.35.55l-.57-.71a2.63,2.63,0,0,1,2-.85c1.25,0,2,.56,2,1.45a1.31,1.31,0,0,1-1.17,1.22,1.34,1.34,0,0,1,1.25,1.28c0,.92-.82,1.57-2.1,1.57A2.67,2.67,0,0,1,3.17,12.24Z" style="fill:#333331"/><path d="M9.33,13V9.13l-.89.9-.65-.68L9.47,7.67h1V13Z" style="fill:#333331"/></svg>
             </template>
             <template is="dom-if" if="[[isPlace]]">
               <svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" width="11" height="16" viewBox="0 0 11 16"><path d="M5.5,15.79a.39.39,0,0,1-.37-.24.36.36,0,0,1,0-.13A7.49,7.49,0,0,0,2.9,10.31c-.37-.44-.79-.94-1.27-1.57L1.4,8.42a5,5,0,0,1-1-3.08,5.13,5.13,0,1,1,10.27,0,5.08,5.08,0,0,1-1,3.08l-.24.32h0c-.48.63-.9,1.13-1.27,1.57a7.46,7.46,0,0,0-2.21,5.08A.39.39,0,0,1,5.5,15.79ZM5.5,3a2,2,0,1,0,2,2A2,2,0,0,0,5.5,3Z" style="fill:#333331"/><rect width="11" height="16" style="fill:none"/></svg>
             </template>
-          </iron-icon>
+          </span>
           <template is="dom-if" if="[[_isNonStandardSelected(data, i18n)]]">
-            <div class="standard-indicator non-standard small">
-              <small>[[_getStandardLabel(data)]]</small>
+            <div class="standard-indicator non-standard small" data-test-nonStandard-indicator>
+              <small data-test="NonstandardIndicator3">[[_getStandardLabel(data)]]</small>
               <span class="carat">▾</span>
             </div>
           </template>
@@ -111,64 +335,47 @@ Example:
             <span class="carat" hidden$="[[loading]]">▾</span>
             <span class="loading" hidden$="[[!loading]]"></span>
           </template>
-
         </button>
       </p>
       <div id="optionsMenuWrapper" tabindex="-1" hidden$="[[_hideStandards]]">
-        <paper-menu id="optionsMenu" tabindex="-1" hidden$="[[_hideStandards]]">
+        <paper-listbox id="optionsMenu" tabindex="-1" hidden$="[[_hideStandards]]">
           <template is="dom-repeat" items="[[_standardOptions]]">
 
-            <template is="dom-if" if="[[item.icon]]" restamp>
-              <paper-icon-item on-tap="_handleChangeStandard">
-                <iron-icon item-icon>
-                  <template is="dom-if" if="[[isDate]]">
-                    <svg id="Layer_1" data-name="Layer 1" width="14" height="16" viewBox="0 0 14 16"><path d="M1,15.9A.94.94,0,0,1,.1,15V3.6A1.5,1.5,0,0,1,1.6,2.1h.3V3A1.1,1.1,0,0,0,3,4.1h.1V.1H4a.9.9,0,0,1,.9.9V2.1h4V3A1.1,1.1,0,0,0,10,4.1h.1V.1H11a.9.9,0,0,1,.9.9V2.1h.5a1.5,1.5,0,0,1,1.5,1.5V15a.94.94,0,0,1-.94.94Zm.86-1.8H12.1V5.9H1.9Z" style="fill:#333331"/><rect width="14" height="16" style="fill:none"/><path d="M3.17,12.24l.59-.76a2.12,2.12,0,0,0,1.47.61c.65,0,1-.28,1-.68s-.33-.62-1.07-.62l-.66,0v-1h.66c.59,0,1-.18,1-.57s-.43-.63-1-.63a1.92,1.92,0,0,0-1.35.55l-.57-.71a2.63,2.63,0,0,1,2-.85c1.25,0,2,.56,2,1.45a1.31,1.31,0,0,1-1.17,1.22,1.34,1.34,0,0,1,1.25,1.28c0,.92-.82,1.57-2.1,1.57A2.67,2.67,0,0,1,3.17,12.24Z" style="fill:#333331"/><path d="M9.33,13V9.13l-.89.9-.65-.68L9.47,7.67h1V13Z" style="fill:#333331"/></svg>
-                  </template>
-                  <template is="dom-if" if="[[isPlace]]">
-                    <svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" width="11" height="16" viewBox="0 0 11 16"><path d="M5.5,15.79a.39.39,0,0,1-.37-.24.36.36,0,0,1,0-.13A7.49,7.49,0,0,0,2.9,10.31c-.37-.44-.79-.94-1.27-1.57L1.4,8.42a5,5,0,0,1-1-3.08,5.13,5.13,0,1,1,10.27,0,5.08,5.08,0,0,1-1,3.08l-.24.32h0c-.48.63-.9,1.13-1.27,1.57a7.46,7.46,0,0,0-2.21,5.08A.39.39,0,0,1,5.5,15.79ZM5.5,3a2,2,0,1,0,2,2A2,2,0,0,0,5.5,3Z" style="fill:#333331"/><rect width="11" height="16" style="fill:none"/></svg>
-                  </template>
-                </iron-icon>
-                <paper-item-body two-line>
-                  <div class="standard-label" style="white-space:normal;color:#333331;font-weight:bold;">[[item.label]]</div>
-                  <div class="standard-info" style="white-space:normal;color:#666662;font-size:12px !important;">[[item.type]][[item.yearRange]]</div>
-                </paper-item-body>
-              </paper-icon-item>
-            </template>
-
-            <template is="dom-if" if="[[!item.icon]]" restamp>
-              <paper-icon-item on-tap="_handleChangeStandard">
-                <iron-icon item-icon></iron-icon>
-                <paper-item-body two-line>
-                  <div class="standard-label" style="white-space:normal;color:#333331;">[[item.label]]</div>
-                  <div class="standard-info" style="white-space:normal;color:#666662;font-size:12px !important;">[[item.type]][[item.yearRange]]</div>
-                </paper-item-body>
-              </paper-icon-item>
-            </template>
+            <paper-icon-item on-tap="_handleChangeStandard" style="display: flex; align-items: center;" title$="[[item.label]]">
+              <template is="dom-if" if="[[item.icon]]">
+                <template is="dom-if" if="[[isDate]]">
+                  <span item-icon style="width: 25px; position: absolute;">
+                    <svg item-icon id="Layer_1" data-name="Layer 1" width="14" height="16" viewBox="0 0 14 16"><path d="M1,15.9A.94.94,0,0,1,.1,15V3.6A1.5,1.5,0,0,1,1.6,2.1h.3V3A1.1,1.1,0,0,0,3,4.1h.1V.1H4a.9.9,0,0,1,.9.9V2.1h4V3A1.1,1.1,0,0,0,10,4.1h.1V.1H11a.9.9,0,0,1,.9.9V2.1h.5a1.5,1.5,0,0,1,1.5,1.5V15a.94.94,0,0,1-.94.94Zm.86-1.8H12.1V5.9H1.9Z" style="fill:#333331"/><rect width="14" height="16" style="fill:none"/><path d="M3.17,12.24l.59-.76a2.12,2.12,0,0,0,1.47.61c.65,0,1-.28,1-.68s-.33-.62-1.07-.62l-.66,0v-1h.66c.59,0,1-.18,1-.57s-.43-.63-1-.63a1.92,1.92,0,0,0-1.35.55l-.57-.71a2.63,2.63,0,0,1,2-.85c1.25,0,2,.56,2,1.45a1.31,1.31,0,0,1-1.17,1.22,1.34,1.34,0,0,1,1.25,1.28c0,.92-.82,1.57-2.1,1.57A2.67,2.67,0,0,1,3.17,12.24Z" style="fill:#333331"/><path d="M9.33,13V9.13l-.89.9-.65-.68L9.47,7.67h1V13Z" style="fill:#333331"/></svg>
+                  </span>
+                </template>
+                <template is="dom-if" if="[[isPlace]]">
+                  <span item-icon style="width: 25px; position: absolute;">
+                    <svg item-icon id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" width="11" height="16" viewBox="0 0 11 16"><path d="M5.5,15.79a.39.39,0,0,1-.37-.24.36.36,0,0,1,0-.13A7.49,7.49,0,0,0,2.9,10.31c-.37-.44-.79-.94-1.27-1.57L1.4,8.42a5,5,0,0,1-1-3.08,5.13,5.13,0,1,1,10.27,0,5.08,5.08,0,0,1-1,3.08l-.24.32h0c-.48.63-.9,1.13-1.27,1.57a7.46,7.46,0,0,0-2.21,5.08A.39.39,0,0,1,5.5,15.79ZM5.5,3a2,2,0,1,0,2,2A2,2,0,0,0,5.5,3Z" style="fill:#333331"/><rect width="11" height="16" style="fill:none"/></svg>
+                  </span>
+                </template>
+              </template>
+              <paper-item-body two-line style="display: flex; flex-direction: column; justify-content: center; flex: 1; flex-basis: .000000001px;">
+                <div class="standard-label" style="white-space:normal;color:#333331;font-weight:bold;">[[item.label]]</div>
+                <div class="standard-info" style="white-space:normal;color:#666662;font-size:12px !important;">[[item.type]][[item.yearRange]]</div>
+              </paper-item-body>
+            </paper-icon-item>
 
           </template>
-        </paper-menu>
+        </paper-listbox>
       </div>
     </div>
-
-    <template is="dom-if" if="[[_showStandardSelectedIndicator(data, searchTerm)]]">
-      <div class="standard-indicator standard small">
-        <small>[[_getStandardizedIndicatorText(standardType, i18n)]]</small>
-      </div>
-    </template>
-
-    <template is="dom-if" if="[[_showNonStandardSelectedIndicator]]">
-      <div class="standard-indicator non-standard small">
-        <small>[[_getNonStandardizedIndicatorText(standardType, i18n)]]</small>
-      </div>
-    </template>
   </template>
 
   <script>
+  (function(){
+    var queryCache = {};
+
     Polymer({
       is: 'birch-standards-picker',
       behaviors: [
         OakI18nBehavior,
-        WCI18n()
+        WCI18n(),
+        FsBehaviors.Metrics
       ],
       properties: {
         /**
@@ -214,15 +421,25 @@ Example:
         },
 
         /**
-         * The object containing the standards picker's current state
+         * The object containing the standards picker's current state.
+         * `customText` and `standardText` should never be identical.
+         * If they are, `customText` will be deleted.
          *
          * @type {Object}
          */
         data: {
           type: Object,
-          value: function(){ return {}; },
+          value: function() { return {}; },
           observer: '_handleDataChange',
-          notifies: true
+          notify: true
+        },
+
+        /** Whether the typeahead input should be disabled or not.
+         * @type {Boolean}
+         */
+        disabled: {
+          type: Boolean,
+          value: false
         },
 
         /**
@@ -248,12 +465,31 @@ Example:
         _hideStandards: {
           type: Boolean,
           value: true
-        }
+        },
+
+        hideStandardsMenu: {
+          type: Boolean,
+          value: false
+        },
+
+        standardSelected: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
+         * Way to confirm if change has occurred
+         */
+         isDirty: {
+          type: Boolean,
+          value: false,
+          notify: true
+        },
       },
 
       observers: [
         '_updateLabels(i18n, standardType)',
-        '_setIsDateOrPlace(standardType, i18n)'
+        '_setIsDateOrPlace(standardType)'
       ],
 
       /**
@@ -262,11 +498,15 @@ Example:
       reset: function() {
         this._resetArrays();
         this._updateData({});
+        this.standardSelected = false;
         this.searchTerm = '';
         this.$.typeahead.value = '';
         this.$.optionsMenu.select(-1);
-        this.$.typeahead.hideOptionsAndBlur(true);
+        this.$.typeahead.hideOptionsAndBlur(false);
         this._showNonStandardSelectedIndicator = false;
+        this._hideStandards = true;
+        this.loading = false;
+        this.isDirty = false;
       },
 
       _resetArrays: function(){
@@ -281,13 +521,27 @@ Example:
       },
 
       _handleDataChange: function(data) {
+        this._setStandardSelected(data);
         if(!this.searchTerm && (data.customText || data.standardText)){
           this.searchTerm = data.customText || data.standardText;
+
           if(!data.label){
-            data.label = data.standardText || data.customText;
-            this._updateData(this.data);
+            var clonedData = this._clone(this.data);
+            clonedData.label = clonedData.standardText || undefined;
+            this._updateData(clonedData);
             this._handleDataChange(this.data);
           }
+
+          // If customText matches standardText exactly,
+          // delete customText and run this function again.
+          if(data.customText === data.standardText){
+            delete data.customText;
+            this._updateData(this._clone(data));
+            this._handleDataChange(this.data);
+          }
+
+          // Must trigger the input handler so that standards
+          // will get fetched even though the user has not typed.
           var fakeEvent = {
             detail: {
               value: this.searchTerm
@@ -301,81 +555,130 @@ Example:
         return data.standardText || data.label;
       },
 
-      _isNonStandardSelected: function(data, i18n) {
+      _isNonStandardSelected: function(data, i18n, showOnlyIfStandardsMenuHidden) {
+        if(!i18n) return;
+        if(showOnlyIfStandardsMenuHidden && !this.hideStandardsMenu) return false;
         return this._getStandardLabel(data) === i18n('NO_STANDARD_SELECTED');
       },
 
+      _clone: function(obj){
+        return JSON.parse(JSON.stringify(obj));
+      },
+
+      // Don't update this.data or emit the update-data event if nothing has changed
+      _dataHasChanged: function(oldData, data) {
+        var keys = ['id', 'customText', 'standardText', 'label'];
+
+        if(!oldData.id && oldData.placeRepId){
+          oldData.id = oldData.placeRepId.toString();
+        }
+
+        for(var i = 0; i < keys.length; ++i){
+          var key = keys[i];
+          if(data[key] !== oldData[key]){
+            return true;
+          }
+        }
+        return false;
+      },
+
       _updateData: function(obj) {
+        // Check changes and trigger the event before updating the data.
+        if(obj.canceled || this._dataHasChanged(this.data, obj)){
+          this.fire('birch-standards-picker:update-data', {data: obj});
+        }
+        // Must reassign this.data even if data hasn't changed
+        // in order to trigger data's observer so that the
+        // Standard Selected indicator can show.
         this.data = Object.assign({}, obj);
-        this.fire('birch-standards-picker:update-data', this.data);
-        console.log(this.data);
       },
 
       // Can't do _is(standardType, 'place') here because the markup gets templatized
-      _setIsDateOrPlace: function(standardType, i18n) {
+      _setIsDateOrPlace: function(standardType) {
         this.isDate = standardType === 'date';
         this.isPlace = standardType === 'place';
       },
 
       _updateLabels: function(i18n, standardType) {
+        if(!i18n) return;
         this.standardsDropdownLabel = this.i18n('STANDARD_' + this.standardType.toUpperCase() + '_LABEL');
-        this.inputLabel = this.i18n('EVENT_' + this.standardType.toUpperCase() + '_LABEL');
+        this.inputLabel = this.inputLabel || this.i18n('EVENT_' + this.standardType.toUpperCase() + '_LABEL');
       },
 
-      _getPlaceholder: function(type, i18n) {
+      _getPlaceholder: function(type, i18n, disabled) {
+        if (!i18n || disabled) return '';
         var string = type.toUpperCase() + '_PLACEHOLDER';
-        return this.i18n(string);
+        return i18n(string);
       },
 
-      _handleInput: function(e, onlySetStandardOptions) {
+      _handleInput: function(e, isProgramaticFetch) {
         if(!e || !e.detail || !e.detail.value){
           this._cancelActiveRequest();
           this.loading = false;
           return this.reset();
         }
+        if(isProgramaticFetch !== true) this.standardSelected = false;
+        if(!e.detail.value.trim()) return;
         this.loading = true;
-        this._fetchData(e.detail.value, onlySetStandardOptions);
+        this._fetchData(e.detail.value, isProgramaticFetch);
       },
 
-      _fetchData: function(term, onlySetStandardOptions) {
+      _fetchData: function(term, isProgramaticFetch) {
         var self = this;
         var url = '/tree-data/authorities/' + this.standardType + '?term=' + term + '&locale=' + this.lang;
         this._req('GET', url).then(function (data){
-          self._handleResponse(data, onlySetStandardOptions);
+          self._handleResponse(data, isProgramaticFetch);
         }).catch(function (err){
           if(err.aborted) return;
-          self._handleResponse([], onlySetStandardOptions);
+          self._handleResponse([], isProgramaticFetch);
           self.fire('birch-standards-picker:error', err);
           console.error('birch-standards-picker:error', err);
         });
       },
 
-      _handleResponse: function(options, onlySetStandardOptions) {
+      _handleResponse: function(options, isProgramaticFetch) {
         this.loading = false;
         if(!options || !Array.isArray(options)){
           options = [];
           this._resetArrays();
         }
-        this._setShowNonStandardSelectedIndicator(this.data, this.searchTerm, this._standardOptions);
 
         var val = this.$.typeahead.$.input.value;
-        if(val && !options.length){
+        if(val && !!val.trim() && !options.length){
           this._resetArrays();
-          return this._updateData({
+          this._updateData({
             customText: val,
             label: this.i18n('NO_STANDARD_' + this.standardType.toUpperCase() + '_AVAILABLE')
           });
+          return this._setShowNonStandardSelectedIndicator(this.data, this.searchTerm, this._standardOptions);
         } else {
           if(this.data.label === this.i18n('NO_STANDARD_' + this.standardType.toUpperCase() + '_AVAILABLE')){
-            delete this.data.label;
-            this._updateData(this.data);
+            var clonedData = this._clone(this.data);
+            delete clonedData.label;
+            this._updateData(clonedData);
           }
+        }
+        if(val && !!val.trim() && !this.data.label && options.length){
+          var clonedData = this._clone(this.data);
+          clonedData.label = clonedData.standardText || this.i18n('NO_STANDARD_SELECTED');
+          this._updateData(clonedData);
         }
         options = options.map(this._mapOptionsCB.bind(this));
         this._standardOptions = [].concat(options);
-        if(onlySetStandardOptions !== true){
-          this._typeaheadOptions = this._setupTypeaheadOptions([].concat(options));
+        this._typeaheadOptions = this._setupTypeaheadOptions([].concat(options));
+        if(isProgramaticFetch === true){
+          this.$.typeahead.hideOptions();
+          if(!this.standardSelected && this.data.standardText){
+            this._selectStandardOptionByStandardizedText(this.data.standardText);
+          }
         }
+
+        this._setShowNonStandardSelectedIndicator(this.data, this.searchTerm, this._standardOptions);
+      },
+
+      _selectStandardOptionByStandardizedText: function(text) {
+        const index = this._standardOptions.map(item => item.standardText).indexOf(text);
+        if(~index) this.$.optionsMenu.select(index);
       },
 
       _mapOptionsCB: function(option) {
@@ -385,8 +688,12 @@ Example:
           label: option.label,
           customText: null,
           standardText: option.value,
+          earliestAstro: option.earliestAstro,
+          latestAstro: option.latestAstro,
+          formalText: option.formalDate,
           type: option.type,
-          yearRange: option.yearRange
+          yearRange: option.yearRange,
+          sortKeyShort: option.sortKeyShort
         };
         if(vm.label === 'None of the above') {
           vm.label = this.i18n('NONE_OF_THE_ABOVE');
@@ -407,16 +714,19 @@ Example:
           //Add the currently entered value as the first option if it differs from the first standard
           var isStandard = (options.length && options[0].label.toLowerCase() === this.searchTerm.toLowerCase());
           if(!isStandard){
-            options.unshift({
+            // New option to unshift
+            var firstOption = {
+              icon: false,
               label: this.searchTerm,
               customText: this.searchTerm
-            });
-            if (options.length > 1){
-              options[0] = Object.assign({}, options[0], {
-                id: options[1].id,
-                standardText: options[1].standardText
-              });
+            };
+
+            // If standard options exist
+            if(options.length > 0){
+              firstOption = Object.assign({}, options[0], firstOption);
             }
+
+            options.unshift(firstOption);
           }
         }
 
@@ -430,12 +740,14 @@ Example:
         if(e.model.item.label === this.i18n('NONE_OF_THE_ABOVE')){
           e.model.item.label = this.i18n('NO_STANDARD_SELECTED');
         }
-        e.model.item.customText = this.data.customText;
-        this._updateData(e.model.item);
+        var data = Object.assign({}, e.model.item, { customText: this.searchTerm });
+        this._updateData(data);
         this._hideStandards = true;
+        this.isDirty = true;
       },
 
       _handleSelect: function(e) {
+        this.fireMetrics({link_name:this.standardType + ' - Entered'})
         if (!e || !e.detail || !e.detail.selection) return;
         this._cancelActiveRequest();
         this.loading = false;
@@ -446,26 +758,31 @@ Example:
 
       _handleCancel: function(e) {
         if (this.searchTerm) {
-          var props = Object.keys(this.data).length;
+          var data = this._clone(this.data);
+          var props = Object.keys(data).length;
           if(!props || (props === 1 && this.data.customText)){
             if (this._standardOptions.length > 0) {
-              this.data = {label: this.i18n('NO_STANDARD_SELECTED')};
+              data.label = this.i18n('NO_STANDARD_SELECTED');
             } else {
-              this.data = {label: this.i18n('NO_STANDARD_' + this.standardType.toUpperCase() + '_AVAILABLE')};
+              data.label = this.i18n('NO_STANDARD_' + this.standardType.toUpperCase() + '_AVAILABLE');
             }
           }
-          if(this.data.standardText !== this.$.typeahead.value){
-            this.data.customText = this.searchTerm;
+          if(data.standardText !== this.$.typeahead.value){
+            data.customText = this.searchTerm;
           }
-          this._updateData(this.data);
+          data.canceled = true;
+          this._updateData(data);
         }
         this._setShowNonStandardSelectedIndicator(this.data, this.searchTerm, this._standardOptions);
       },
 
-      _openStandardSelector: function() {
+      _openStandardSelector: function(e) {
+        // We have to programmatically focus the button on
+        // click because firefox doesn't do it automatically.
+        if (e && e.target) e.target.focus();
+
         if (this._standardOptions.length < 1) return;
         this._hideStandards = this._hideStandards ? false : true;
-        // this._focusButton();
       },
 
       _handleFocusout: function(e) {
@@ -520,11 +837,11 @@ Example:
       },
 
       _handleEnter: function(e) {
-        e.preventDefault();
         if(this._hideStandards) {
           this._hideStandards = false;
           return;
         }
+        e.preventDefault();
         e.model = e.model || {};
         e.model.item = this._standardOptions[this.$.optionsMenu.selected];
         this._handleChangeStandard(e);
@@ -532,6 +849,7 @@ Example:
       },
 
       _handleEscape: function(e) {
+        if(!this._hideStandards) e.stopPropagation();
         this._hideStandards = true;
         this._focusButton();
       },
@@ -546,6 +864,8 @@ Example:
       _req: function(method, url) {
         this._cancelActiveRequest();
         return new Promise(function (resolve, reject){
+          var cacheVal = queryCache[url];
+          if(cacheVal) return resolve(cacheVal);
           this.xhr = new XMLHttpRequest();
           this.xhr.open(method.toUpperCase(), url, true);
           this.xhr.onload = function(){
@@ -553,7 +873,9 @@ Example:
               if(!this || !this.response || !this.response) return reject(this);
               if(this.status >= 300) return reject(this);
               if(this.status === 204) return resolve();
-              return resolve(JSON.parse(this.response));
+              var output = JSON.parse(this.response);
+              queryCache[url] = output;
+              return resolve(output);
             } catch(err) {
               return reject(err);
             }
@@ -564,16 +886,20 @@ Example:
       },
 
       _hideStandardIcon: function(label, i18n) {
+        if(!i18n) return;
         return label === i18n('NO_STANDARD_SELECTED');
       },
 
-      _hideStandardsContainer: function(data, standardType, i18n) {
-        return !data.customText || data.label === i18n('NO_STANDARD_' + standardType.toUpperCase() + '_AVAILABLE');
+      _hideStandardsContainer: function(data, standardType, i18n, hideStandardsMenu) {
+        if(!i18n || hideStandardsMenu) return true;
+        var standardType = standardType.toUpperCase();
+        var noStandardText = i18n('NO_STANDARD_' + standardType + '_AVAILABLE');
+        return !data.customText || data.label === noStandardText;
       },
 
       // searchTerm is passed here simply to trigger this observer
       _showStandardSelectedIndicator: function(data, searchTerm) {
-        return data.standardText && !data.customText && data.label === this.$.typeahead.value;
+        return data.standardText;
       },
 
       _setShowNonStandardSelectedIndicator: function(data, searchTerm, standardOptions) {
@@ -581,13 +907,24 @@ Example:
       },
 
       _getStandardizedIndicatorText: function(standardType, i18n) {
+        if(!i18n) return;
         return (standardType === 'place') ? i18n('STANDARDIZED_PLACE') : i18n('STANDARDIZED_DATE');
       },
 
       _getNonStandardizedIndicatorText: function(standardType, i18n) {
+        if(!i18n) return;
         return (standardType === 'place') ? i18n('NO_STANDARD_PLACE_AVAILABLE') : i18n('NO_STANDARD_DATE_AVAILABLE');
-      }
+      },
 
+      // Track whether the current selection has custom text
+      _setStandardSelected: function(selection) {
+        this.standardSelected = selection.standardText && !selection.customText;
+      },
+
+      _showStandardInputIcon: function(bool, standardSelected) {
+        return bool && standardSelected;
+      }
     });
+  })();
   </script>
 </dom-module>

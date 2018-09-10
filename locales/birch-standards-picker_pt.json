@@ -1,11 +1,10 @@
 {
-  "_LRM_PKTAG452": "birch-standards-picker_3_154 - CHANGES-ONLY",
   "DATE_PLACEHOLDER": "Digite a data",
   "EVENT_DATE_LABEL": "Data do Evento",
   "EVENT_PLACE_LABEL": "Local do Evento",
   "NONE_OF_THE_ABOVE": "Nenhuma das opções acima",
-  "NO_STANDARD_DATE_AVAILABLE": "A padronização da data não está disponível",
-  "NO_STANDARD_PLACE_AVAILABLE": "A padronização do local não está disponível",
+  "NO_STANDARD_DATE_AVAILABLE": "Data não padronizada",
+  "NO_STANDARD_PLACE_AVAILABLE": "Local não padronizado",
   "NO_STANDARD_SELECTED": "Nenhum padrão foi selecionado",
   "PLACE_PLACEHOLDER": "Digite o local",
   "STANDARDIZED_DATE": "Data Padronizada",

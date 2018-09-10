@@ -1,6 +1,12 @@
+[![Build Status](https://travis-ci.com/fs-webdev/birch-standards-picker.svg?branch=master)](https://travis-ci.com/fs-webdev/birch-standards-picker)
 # birch-standards-picker
 An element that chooses standard dates and places.
 
+## Styling
+The following custom properties and mixins are available for styling:
+| Custom Property                       | Description               | Default |
+|---------------------------------------|---------------------------|---------|
+| `--birch-standards-picker-paper-item` | Mixin applied to the item | `{}`    |
 
 ## Dependencies
 
@@ -14,20 +20,24 @@ Then, go ahead and download the element's dependencies:
     bower install
 
 
-## Playing With Your Element
+## Running the component
 
-If you wish to work on your element in isolation, we recommend that you use
-[Polyserve](https://github.com/PolymerLabs/polyserve) to keep your element's
-bower dependencies in line. You can install it via:
+1. (Once) Install or update the [Polymer CLI](https://www.npmjs.com/package/polymer-cli): ```npm i -g polymer-cli```
+1. (Once) Install the [frontier-cli](https://github.com/fs-webdev/frontier-cli): ```npm i -g https://github.com/fs-webdev/frontier-cli```
+1. Run `bower i` to load all of the dependencies.
+1. Run `polymer analyze > analysis.json` to set up docs/demo pages.
 
-    npm install -g polyserve
+This component's demo page is viewable by running:
 
-And you can run it via:
+```bash
+frontier element serve -d
+```
 
-    polyserve
+This component's auto-generated documentation is viewable by running:
 
-Once running, you can preview your element at
-`http://localhost:8080/components/birch-typeahead/`, where `birch-typeahead` is the name of the directory containing it.
+```bash
+frontier element serve
+```
 
 
 ## Testing Your Element
