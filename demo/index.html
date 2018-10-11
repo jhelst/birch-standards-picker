@@ -20,59 +20,18 @@
   <link rel="apple-touch-icon-precomposed" href="apple-touch-icon.png">
 
   <!-- Polyfills -->
-  <script src="../../es6-promise-polyfill/promise.min.js"></script>
-  <script src="../../fetch/fetch.js"></script>
   <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="../../es6-promise/dist/es6-promise.auto.js"></script>
+  <script src="../../fetch/fetch.js"></script>
   <script>
     window.Polymer = { dom: 'shadow' };
   </script>
+  <link rel="import" href="../../fs-demo/fs-demo.html">
   <link rel="import" href="../birch-standards-picker.html">
-  <script src="../../sinonjs/sinon.js"></script>
-  <script>
-    /**
-     * This setup is necessary to overcome timing issues in firefox, safari, and IE11.
-     * Chrome works fine.
-     */
-     
-    var count = 0;
-    var dateData;
-    var placeData;
-
-    function setupServer(){
-      var server = sinon.fakeServer.create({autoRespond: true, autoRespondAfter: 200});
-
-      server.respondWith("GET", /\/tree-data\/authorities\/date*/,
-                         [200, {"Content-Type": "application/json"},
-                          JSON.stringify(dateData)]);
-
-      server.respondWith("GET", /\/tree-data\/authorities\/place*/,
-                         [200, {"Content-Type": "application/json"},
-                          JSON.stringify(placeData)]);
-    }
-
-    function increment(){
-      count += 1;
-      if(count === 2) setupServer();
-    }
-
-    setTimeout(function(){
-      fetch('../../../components/qa-shared-mock-json/tree-data/authorities/date-en-get-200.json').then(function (res){
-        return res.json();
-      }).then(function (res) {
-        dateData = res;
-        increment();
-      });
-
-      fetch('../../../components/qa-shared-mock-json/tree-data/authorities/place-en-get-200.json').then(function (res){
-        return res.json();
-      }).then(function (res) {
-        placeData = res;
-        increment();
-      });
-    }, 1500);
-  </script>
+  
 </head>
 <body>
+  <fs-demo hide-pid></fs-demo>
   <birch-standards-picker standard-type='place'></birch-standards-picker>
   <div style="margin-top:50px;">
     <button id="toggle">Toggle Type</button>

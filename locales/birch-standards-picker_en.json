@@ -1,8 +1,8 @@
 {
   "PLACE_PLACEHOLDER":"Enter a place.",
   "DATE_PLACEHOLDER":"Enter a date.",
-  "NO_STANDARD_DATE_AVAILABLE":"No standardized date is available.",
-  "NO_STANDARD_PLACE_AVAILABLE":"No standardized place is available.",
+  "NO_STANDARD_DATE_AVAILABLE":"Nonstandardized Date",
+  "NO_STANDARD_PLACE_AVAILABLE":"Nonstandardized Place",
   "NO_STANDARD_SELECTED":"No standard is selected.",
   "EVENT_DATE_LABEL":"Event Date",
   "EVENT_PLACE_LABEL":"Event Place",
