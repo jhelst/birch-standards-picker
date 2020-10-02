@@ -344,10 +344,10 @@ The following custom properties and mixins are available for styling:
       <div slot="helplet-icon">
         <template is="dom-if" if="[[showFieldHelp]]">
           <template is="dom-if" if="[[isDate]]">
-            <fs-helplet content="[[i18n('HELPLET_DATE')]]"></fs-helplet>
+            <fs-helplet content="[[_getComplexString('date', i18n)]]"></fs-helplet>
           </template>
           <template is="dom-if" if="[[isPlace]]">
-            <fs-helplet content="[[i18n('HELPLET_PLACE')]]"></fs-helplet>
+            <fs-helplet content="[[_getComplexString('place', i18n)]]"></fs-helplet>
           </template>
         </template>
       </div>
@@ -392,10 +392,10 @@ The following custom properties and mixins are available for styling:
           <small>[[standardsDropdownLabel]]</small>
           <template is="dom-if" if="[[showFieldHelp]]">
             <template is="dom-if" if="[[isDate]]">
-              <fs-helplet content="[[i18n('HELPLET_STANDARDIZED_DATE')]]"></fs-helplet>
+              <fs-helplet content="[[_getComplexString('standardizedDate', i18n)]]""></fs-helplet>
             </template>
             <template is="dom-if" if="[[isPlace]]">
-                <fs-helplet content="[[i18n('HELPLET_STANDARDIZED_PLACE')]]"></fs-helplet>
+                <fs-helplet content="[[_getComplexString('standardizedPlace', i18n)]]"]]"></fs-helplet>
             </template>
           </template>
         </div>
@@ -709,6 +709,36 @@ The following custom properties and mixins are available for styling:
 
       _getStandardLabel: function (data) {
         return data.standardText || data.label;
+      },
+
+      _getComplexString: function (type, i18n) {
+        if (!i18n) return;
+
+        const helpletDateLearnMoreLink = `<a href='https://www.familysearch.org/help/helpcenter/article/how-do-i-enter-dates-and-places-into-family-tree' title='${i18n('HELPLET_DATE_LEARN_MORE_TITLE_TEXT')}' target='_blank'>${i18n('HELPLET_DATE_LEARN_MORE_TITLE_TEXT')}</a><br /> `;
+        const helpletDateLearnWhatLink = `<a href='https://www.familysearch.org/help/helpcenter/article/i-dont-know-the-exact-date-to-enter-into-family-tree' title='${i18n('HELPLET_DATE_LEARN_WHAT_TITLE_TEXT')}' target='_blank'>${i18n('HELPLET_DATE_LEARN_WHAT_TITLE_TEXT')}</a>`;
+        const constructedHelpletDateString = `${i18n(`HELPLET_DATE`)} ${helpletDateLearnMoreLink} ${helpletDateLearnWhatLink}`;
+
+        const helpletPlaceLearnMoreLink = `<a href='https://www.familysearch.org/help/helpcenter/article/how-do-i-enter-dates-and-places-into-family-tree' title='${i18n('HELPLET_PLACE_LEARN_MORE_TITLE_TEXT')}' target='_blank'>${i18n('HELPLET_PLACE_LEARN_MORE_TITLE_TEXT')}</a><br /> `;
+        const helpletPlaceLearnHowLink = `<a href='https://www.familysearch.org/help/helpcenter/article/how-do-i-add-or-correct-a-standardized-place-in-family-tree' title='${i18n('HELPLET_PLACE_LEARN_HOW_TITLE_TEXT')}' target='_blank'>${i18n('HELPLET_PLACE_LEARN_HOW_TITLE_TEXT')}</a>`;
+        const constructedHelpletPlaceString = `${i18n(`HELPLET_DATE`)} ${helpletPlaceLearnMoreLink} ${helpletPlaceLearnHowLink}`;
+
+        const constructedHelpletStandardizedDateString = `${i18n(`HELPLET_STANDARDIZED_DATE`)} ${helpletDateLearnMoreLink} ${helpletDateLearnWhatLink}`;
+        const constructedHelpletStandardizedPlaceString = `${i18n(`HELPLET_STANDARDIZED_PLACE`)} ${helpletPlaceLearnMoreLink} ${helpletPlaceLearnHowLink}}`;
+
+        switch (type) {
+          case 'date':
+            return constructedHelpletDateString;
+            break;
+          case 'place':
+            return constructedHelpletPlaceString;
+            break;
+          case 'standardizedDate':
+            return constructedHelpletStandardizedDateString;
+            break;
+          case 'standardizedPlace':
+            return constructedHelpletStandardizedPlaceString;
+            break;
+        }
       },
 
       _isNonStandardSelected: function (data, i18n, showOnlyIfStandardsMenuHidden) {
