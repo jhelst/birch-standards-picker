@@ -344,10 +344,10 @@ The following custom properties and mixins are available for styling:
       <div slot="helplet-icon">
         <template is="dom-if" if="[[showFieldHelp]]">
           <template is="dom-if" if="[[isDate]]">
-            <fs-helplet content="[[i18n('HELPLET_DATE')]]"></fs-helplet>
+            <fs-helplet content="[[_getComplexString('date', i18n)]]"></fs-helplet>
           </template>
           <template is="dom-if" if="[[isPlace]]">
-            <fs-helplet content="[[i18n('HELPLET_PLACE')]]"></fs-helplet>
+            <fs-helplet content="[[_getComplexString('place', i18n)]]"></fs-helplet>
           </template>
         </template>
       </div>
@@ -392,10 +392,10 @@ The following custom properties and mixins are available for styling:
           <small>[[standardsDropdownLabel]]</small>
           <template is="dom-if" if="[[showFieldHelp]]">
             <template is="dom-if" if="[[isDate]]">
-              <fs-helplet content="[[i18n('HELPLET_STANDARDIZED_DATE')]]"></fs-helplet>
+              <fs-helplet content="[[_getComplexString('standardizedDate', i18n)]]"></fs-helplet>
             </template>
             <template is="dom-if" if="[[isPlace]]">
-                <fs-helplet content="[[i18n('HELPLET_STANDARDIZED_PLACE')]]"></fs-helplet>
+                <fs-helplet content="[[_getComplexString('standardizedPlace', i18n)]]"></fs-helplet>
             </template>
           </template>
         </div>
@@ -760,6 +760,20 @@ The following custom properties and mixins are available for styling:
       },
       _setThinDateStyles (_isDate, _showThinDate) {
         if (_isDate && _showThinDate) return 'max-height: 50px; font-weight: 100;';
+      },
+
+      _getComplexString: function (type, i18n) {
+        if (!i18n) return;
+        switch (type) {
+          case 'date':
+            return i18n('HELPLET_DATE', 'title1', i18n('HELPLET_DATE_LEARN_MORE_TEXT'), 'title2', i18n('HELPLET_DATE_LEARN_WHAT_TEXT'));
+          case 'place':
+            return i18n('HELPLET_PLACE', 'title1', i18n('HELPLET_PLACE_LEARN_MORE_TEXT'), 'title2', i18n('HELPLET_PLACE_LEARN_HOW_TEXT'));
+          case 'standardizedDate':
+            return i18n('HELPLET_STANDARDIZED_DATE', 'title1', i18n('HELPLET_PLACE_LEARN_MORE_TEXT'), 'title2', i18n('HELPLET_PLACE_LEARN_HOW_TEXT'));
+          case 'standardizedPlace':
+            return i18n('HELPLET_STANDARDIZED_PLACE', 'title1', i18n('HELPLET_PLACE_LEARN_MORE_TEXT'), 'title2', i18n('HELPLET_PLACE_LEARN_HOW_TEXT'));
+        }
       },
 
       _updateLabels: function (i18n, standardType, inputLabel) {

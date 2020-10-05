@@ -1,6 +1,6 @@
 {
   "name": "birch-standards-picker",
-  "version": "2.15.4",
+  "version": "2.15.5",
   "description": "A picker for the FamilySearch date/place standards",
   "main": [
     "birch-standards-picker.html",
